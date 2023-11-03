@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-def class PacketType(Enum):
+class PacketType(Enum):
     # FLOODING
     FLOODING_REQUEST        = 10  
     FLOODING_RESPONSE       = 20
@@ -11,7 +11,7 @@ def class PacketType(Enum):
     MEDIA_RESPONSE          = 21  
     
 
-def class Packet():
+class Packet():
     # packet vazio
     def __init__(self):
         self.type = None
@@ -26,7 +26,7 @@ def class Packet():
         self.type = type
         self.data = data
         self.sender = sender_ip
-        if type == FLOODING_REQUEST or type == FLOODING_RESPONSE:
+        if type == PacketType.FLOODING_REQUEST or type == PacketType.FLOODING_RESPONSE:
             self.path = [] # stack
         else:
             self.path = None
@@ -34,15 +34,16 @@ def class Packet():
         self.jumps = 0
     # obter tipo de packet
     def get_type(self):
-        if packet.type == MEDIA_REQUEST:
+        if  self.packet.type == PacketType.MEDIA_REQUEST:
             return "media request"
-        elif packet.type == MEDIA_RESPONSE:
+        elif self.packet.type == PacketType.MEDIA_RESPONSE:
             return "media response"
-        elif packet.type == FLOODING_REQUEST:
+        elif self.packet.type == PacketType.FLOODING_REQUEST:
             return "flooding request"
-        elif packet.type == FLOODING_RESPONSE:
+        elif self.packet.type == PacketType.FLOODING_RESPONSE:
             return "flooding response"
-        else return "Packet Inválido"
+        else:
+            return "Packet Inválido"
     
     def update(self, new_host):
         self.jumps += 1
