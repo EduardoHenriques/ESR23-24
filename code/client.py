@@ -3,8 +3,8 @@ import time
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server_ip = "10.0.4.10"
-server_port = 1223 # UDP
+server_ip = "10.0.0.1"
+server_port = 4200 # UDP
 
 client_socket.connect((server_ip, server_port))
 i = 1
