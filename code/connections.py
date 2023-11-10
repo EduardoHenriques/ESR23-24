@@ -1,7 +1,8 @@
 import socket
 from server_worker import ServerWorker
 from threading import * 
-import pickle, threading
+from utils.packet import CTT
+import threading
 
 class TCPListen(Thread):
 
@@ -20,18 +21,7 @@ class TCPListen(Thread):
                 print(f"Accepted connection from {client_address}")
                 thread = threading.Thread(target=self.sw.process_TCP, args=(client_socket,client_address))
                 thread.start()
-                # Receive data from the client
-                #data = client_socket.recv(1024)  # Adjust buffer size as needed
-                #if not data:
-                    #break  # Exit the loop if the client disconnects
-
-                # Process the received data
-                #print(f"Received data from {client_address}: {data.decode('utf-8')}")
-
-                # You can send a response to the client here if needed
-
-                # Close the client socket
-                #client_socket.close()
+                
         # funcao para tratar de ligaçoes TCP
         except KeyboardInterrupt:
             print("[SERVER] FIM DO SERVIDOR")
@@ -50,7 +40,7 @@ class UDPListen(Thread):
             UDP_socket.bind((self.sw.ip, int(self.sw.port_UDP)))  # dar bind ao ao ip e porta ao servidor
             print(f"[SERVER] Estou à escuta no {self.sw.ip}:{self.sw.port_UDP}")
             while True:
-                data, addr = UDP_socket.recvfrom(1024)  # Adjust buffer size as needed
+                data, addr = CTT.recv_msg_udp(UDP_socket)  # Adjust buffer size as needed
                 # Process the received data
                 thread = threading.Thread(target=self.sw.process_UDP, args=(data, addr))
                 thread.start()
@@ -58,14 +48,4 @@ class UDPListen(Thread):
                 
         except KeyboardInterrupt:
             print("[SERVER] FIM DO SERVIDOR")
-            
-@staticmethod
-def serialize(msg):
-    return pickle.dumps(msg)
 
-@staticmethod
-def deserialize(msg_bytes):
-    try:
-        data = pickle.loads(msg_bytes)
-    except EOFError:
-        data = 'null'  # or whatever you want
