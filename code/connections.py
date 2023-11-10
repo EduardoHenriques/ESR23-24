@@ -1,65 +1,60 @@
 import socket
-from threading import Thread
-import pickle
+from server_worker import ServerWorker
+from threading import * 
+import pickle, threading
 
 class TCPListen(Thread):
 
-    def __init__(self, porta, ip, servidor):
-        self.porta = int(porta)
-        self.ip = ip
-        self.type = "TCP"
-        self.servidor = servidor
-
+    def __init__(self, sw):
+        self.sw = sw
         Thread.__init__(self)
 
     def run(self):
         try:
             TCP_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # criar socket
-            TCP_socket.bind((self.ip, self.porta))  # dar bind ao ip e porta ao servidor
+            TCP_socket.bind((self.sw.ip, int(self.sw.port_TCP)))  # dar bind ao ip e porta ao servidor
             TCP_socket.listen(5)  # servidor fica à espera de ligaçoes
-            print(f"[SERVER] Estou à escuta no {self.ip}:{self.porta}")
             while True:
-                # Accept an incoming connection
+                print(f"[SERVER] Estou à escuta no {self.sw.ip}:{self.sw.port_TCP}")
                 client_socket, client_address = TCP_socket.accept()
                 print(f"Accepted connection from {client_address}")
-
+                thread = threading.Thread(target=self.sw.process_TCP, args=(client_socket,client_address))
+                thread.start()
                 # Receive data from the client
-                data = client_socket.recv(1024)  # Adjust buffer size as needed
-
-                if not data:
-                    break  # Exit the loop if the client disconnects
+                #data = client_socket.recv(1024)  # Adjust buffer size as needed
+                #if not data:
+                    #break  # Exit the loop if the client disconnects
 
                 # Process the received data
-                print(f"Received data from {client_address}: {data.decode('utf-8')}")
+                #print(f"Received data from {client_address}: {data.decode('utf-8')}")
 
                 # You can send a response to the client here if needed
 
                 # Close the client socket
-                client_socket.close()
+                #client_socket.close()
         # funcao para tratar de ligaçoes TCP
         except KeyboardInterrupt:
             print("[SERVER] FIM DO SERVIDOR")
+            TCP_socket.close()
 
 
 class UDPListen(Thread):
-    def __init__(self, porta, ip, servidor, nomeServer):
-        self.porta = int(porta)
-        self.ip = ip
-        self.type = "UDP"
-        self.servidor = servidor
-        self.nomeServer = nomeServer
+    def __init__(self, sw):
+        self.sw = sw
         Thread.__init__(self)
         
 
     def run(self):
         try:
             UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
-            UDP_socket.bind((self.ip, self.porta))  # dar bind ao ao ip e porta ao servidor
-            print(f"[SERVER] Estou à escuta no {self.ip}:{self.porta}")
+            UDP_socket.bind((self.sw.ip, int(self.sw.port_UDP)))  # dar bind ao ao ip e porta ao servidor
+            print(f"[SERVER] Estou à escuta no {self.sw.ip}:{self.sw.port_UDP}")
             while True:
                 data, addr = UDP_socket.recvfrom(1024)  # Adjust buffer size as needed
                 # Process the received data
-                print(f"Received data from {addr}: {data.decode('utf-8')}")
+                thread = threading.Thread(target=self.sw.process_UDP, args=(data, addr))
+                thread.start()
+                thread.join()
                 
         except KeyboardInterrupt:
             print("[SERVER] FIM DO SERVIDOR")

@@ -2,7 +2,7 @@ import socket
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-host = "10.0.4.10"
+host = "10.0.0.1"
 UDP_port = 1223
 server_socket.bind((host, UDP_port))
 
