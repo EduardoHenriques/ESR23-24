@@ -1,28 +1,42 @@
 import socket
+from connections import TCPListen, UDPListen
+from server_worker import ServerWorker
+import json, sys
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+CONFIG_PATH = "Configs/all_servers.json"
+FILE_PATH = "movie.Mjpeg"
 
-host = "10.0.0.1"
-UDP_port = 1223
-server_socket.bind((host, UDP_port))
+class Server():
+    
+    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
+        self.name = name 
+        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "router")
+    def __str__(self) -> str:
+        return (f"ROUTER: {self.name}")
+    
+    def run(self):
+        print("Start")
+        tcp_socket = TCPListen(self.SW)
+        udp_socket = UDPListen(self.SW)
+        #start threads for each protocol
+        tcp_socket.start()
+        udp_socket.start()
+        #join them (acho que n acontece)
+        udp_socket.join()
+        tcp_socket.join()
 
-server_socket.listen(5)
 
-print(f"A ouvir em {host}:{UDP_port}")
 
-client_socket, client_address = server_socket.accept()
-print(f"Ligação de {client_address}")
-
-packets = 0
-
-while True:
-    data = client_socket.recv(1024)
-    if not data:
-        break
-    print(f"Recebeu: {data.decode('utf-8')}")
-    packets +=1
-    if packets == 5:
-        break
-
-client_socket.close()
-server_socket.close()
+if __name__ == "__main__":
+    if len(sys.argv) < 1:
+        print("Erro - parametros invalidos")
+        exit()
+    else: 
+        args = sys.argv[1:]
+        server_name = args[0]
+        with open(CONFIG_PATH,'r') as file:
+            data = json.load(file)
+            r_info = data[server_name]
+            r = Server(r_info["name"], r_info["RP"], r_info["ip"], r_info["port_UDP"], r_info["port_TCP"], r_info["neighbours"]) # __init__
+            print(r.SW)
+            r.run()

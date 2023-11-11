@@ -33,7 +33,7 @@ class UDPListen(Thread):
         self.sw = sw
         Thread.__init__(self)
         
-
+    
     def run(self):
         try:
             UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
@@ -44,7 +44,6 @@ class UDPListen(Thread):
                 # Process the received data
                 thread = threading.Thread(target=self.sw.process_UDP, args=(data, addr))
                 thread.start()
-                thread.join()
                 
         except KeyboardInterrupt:
             print("[SERVER] FIM DO SERVIDOR")

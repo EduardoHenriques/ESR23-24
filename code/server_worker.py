@@ -7,22 +7,22 @@ from  utils.packet import *
 CONFIG_PATH = "Configs/all_routers.json"
 
 class ServerWorker(Thread):
-    # object -> router OU server
-    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
+    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, device_type):
         self.port_UDP = port_UDP
         self.port_TCP = port_TCP
         self.ip = ip
         self.device_name = name
         self.RP = is_rendezvous
         self.neighbours = neighbours
+        self.type = device_type
     
 
     def __str__(self) -> str:
-        return (f"Server Worker of device {self.device_name}\n. Ports(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
+        return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
     def process_UDP(self, packet, addr):
         if packet.type == "MEDIA_RESPONSE":
-            
+            print("")
             
             
     # Flooding -> Performs flooding on every router except the one that sent the packet

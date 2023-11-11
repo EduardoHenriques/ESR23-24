@@ -12,7 +12,7 @@ class Router():
     
     def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
         self.name = name 
-        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours)
+        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "router")
     def __str__(self) -> str:
         return (f"ROUTER: {self.name}")
     

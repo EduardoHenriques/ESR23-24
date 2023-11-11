@@ -9,12 +9,12 @@ class PacketType(Enum):
     FLOOD_ERROR            = 12 
 
     # Pacotes enviados entre servidores/clientes 
-    MEIDA_REQUEST          = 20
+    MEDIA_REQUEST          = 20
     MEDIA_RESPONSE         = 21
     MEDIA_ERROR            = 22
 
-    # Pacotes enviados pelo servidor 
-    SHUT_DOWN              = 30
+    # Pacotes enviados para o servidor 
+    SHUT_DOWN_REQUEST      = 30
     
 class Packet:
     def __init__(self, type, data):
@@ -76,6 +76,6 @@ class CTT:
         try:
             data = pickle.loads(msg_bytes)
         except EOFError:
-            data = 'null'  # or whatever you want
+            data = None  # or whatever you want
 
         return data

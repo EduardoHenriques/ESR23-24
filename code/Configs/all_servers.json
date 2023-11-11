@@ -1,0 +1,18 @@
+{
+    "S1": {
+        "name": "n8_server",
+        "RP": "False",
+        "ip": "10.0.2.10",
+        "port_UDP": "6969",
+        "port_TCP": "4200",
+        "neighbours": []
+    },
+    "S2": {
+        "name": "n5_server",
+        "RP": "False",
+        "ip": "10.0.4.21",
+        "port_UDP": "6969",
+        "port_TCP": "4200",
+        "neighbours": []
+    }
+}
