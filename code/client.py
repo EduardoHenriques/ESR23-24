@@ -1,7 +1,5 @@
 import socket, json, time, sys
 from utils.packet import *
-from connections import TCPListen, UDPListen
-from server_worker import ServerWorker
 
 CONFIG_PATH = ("Configs/all_hosts.json")
 
@@ -17,17 +15,20 @@ if __name__ == "__main__":
     my_ip, my_router = client["ip"], client["router"]
     udp_p,tcp_p,rendezvous_points = data["port_UDP"], data["port_TCP"], data["target_RP"]
     file.close()
-    
-    # create server worker, with 2 threads to listen to each type of connnection
-    sw = ServerWorker("client",False,my_ip,udp_p,tcp_p,[my_router],"host")
-    print(sw)
-    tcp_listen, udp_listen = TCPListen(sw), UDPListen(sw)
-    tcp_listen.run()
-    udp_listen.run()
+    # connect to router
     # always perform a flooding request...
     print('-'*25+"\nPERFORMING FLOOD REQUEST...\n"+'-'*25)
-    request_packet = Packet(PacketType.FLOOD_REQUEST,"?????")
-    CTT.send_msg(request_packet, sw.port_TCP)
+    request_packet = Packet(PacketType.FLOOD_REQUEST,[my_ip])
+    print(request_packet)
+    CTT.send_msg(request_packet, client_socket)
+    time.sleep(3)
+    #print(CTT.recv_msg(client_socket))
+    # TODO como acabar saber que acabou flood request
     # ..followed by a media request when you get the response back
     print('-'*25+"\nPERFORMING MEDIA REQUEST...\n"+'-'*25)
+    request_packet = Packet(PacketType.MEDIA_REQUEST,"movie_name")
+    CTT.send_msg(request_packet, client_socket)
     
+
+    # listen for the video frames
+

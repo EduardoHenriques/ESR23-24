@@ -28,8 +28,9 @@ class ServerWorker(Thread):
     # Flooding -> Performs flooding on every router except the one that sent the packet
     # Media -> Redirects the media to the host that requested it or to the server
     def process_TCP(self, client_socket,client_address):
-        while client_socket.fileno() != -1:
-            packet = CTT.recv_msg(client_socket)
+        packet = CTT.recv_msg(client_socket)
+        while packet != None:
+            print(packet)
             if packet.type == PacketType.FLOOD_REQUEST:
                 print(f"flood request from {client_address}")
                 # processar request
@@ -42,7 +43,7 @@ class ServerWorker(Thread):
             else:
                 print(f"media response from {client_address}")
                 # processar response
-
+            packet = CTT.recv_msg(client_socket)
     def run(self):
         if len(sys.argv) != 1:
             print("Erro - parametros invalidos")
@@ -60,3 +61,6 @@ class ServerWorker(Thread):
                     break
         except KeyboardInterrupt:
             self.socket.close()
+            
+    #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
+    #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2

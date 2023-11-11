@@ -20,7 +20,9 @@ class Packet:
     def __init__(self, type, data):
         self.type = type
         self.data = data
-
+    
+    def __str__(self) -> str:
+        return (f"type: {self.type}\ndata: {self.data}")
 class CTT:
     HEADER_SIZE = 8
     BUFFER_SIZE = 1024
@@ -79,3 +81,6 @@ class CTT:
             data = None  # or whatever you want
 
         return data
+
+    
+    
