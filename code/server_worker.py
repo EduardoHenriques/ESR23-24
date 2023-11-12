@@ -3,43 +3,79 @@ import time
 from threading import Thread
 import sys, json
 from  utils.packet import *
-
+from utils.video_stream import VideoStream
 CONFIG_PATH = "Configs/all_routers.json"
 
 class ServerWorker(Thread):
-    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, device_type):
+    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, extra_info):
         self.port_UDP = port_UDP
         self.port_TCP = port_TCP
         self.ip = ip
         self.device_name = name
         self.RP = is_rendezvous
         self.neighbours = neighbours
-        self.type = device_type
+        self.extra_info = extra_info
     
 
     def __str__(self) -> str:
         return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
+    def send_media(self, socket, addr):
+        video = VideoStream(self.extra_info)
+        while True:              
+            # Stop sending if request is PAUSE or TEARDOWN
+            data = video.nextFrame()
+            if data:
+                frameNumber = data.frameNnr()
+                try:
+                    CTT.send_msg_udp((frameNumber, data), socket, addr)
+                except:
+                    print("Connection Error")
+                    print('-'*60)
+                    #traceback.print_exc(file=sys.stdout)
+                    print('-'*60)
+        # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
+    
     def process_UDP(self, packet, addr):
-        if packet.type == "MEDIA_RESPONSE":
-            print("")
-            
-            
+        print("process")
+        #TODO receber media_responses e reencaminhar pacotes recebidos
     # Flooding -> Performs flooding on every router except the one that sent the packet
     # Media -> Redirects the media to the host that requested it or to the server
+    
     def process_TCP(self, client_socket,client_address):
         packet = CTT.recv_msg(client_socket)
         while packet != None:
             print(packet)
+            # REQ - FLOOD
             if packet.type == PacketType.FLOOD_REQUEST:
-                print(f"flood request from {client_address}")
-                # processar request
+                print(f"flood request from {client_address} to {self.device_name}.")
+                data = packet.data
+                data[0] +=1 # jump nº increases
+                data[1].append(self.ip) # increase path
+                if self.RP:
+                    data[2] = True # has it reached a RP? 
+                else:
+                    new_packet = Packet(PacketType.FLOOD_REQUEST, data)
+                    #TODO criar ligações com todos os vizinhos
+                    for n in self.neighbours:
+                        print()
+                        #TODO enviar request para cada vizinho
+                        #CTT.send_msg(new_packet, # )
+                packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
+                #TODO enviar resposta para quem fez o pedido
+            # RESP - FLOOD
             elif packet.type == PacketType.FLOOD_RESPONSE:
                 print(f"flood response from {client_address}")
-                # processar response
+                data = packet.data
+                if data[3] == True:
+                    print("....") #TODO
+                    
+            # REQ - MEDIA   
             elif packet.type == PacketType.MEDIA_REQUEST:
                 print(f"media request from {client_address}")
-                # processar request
+                if "router" not in self.extra_info:
+                    print("...")
+            # RESP - MEDIA
             else:
                 print(f"media response from {client_address}")
                 # processar response
@@ -61,6 +97,8 @@ class ServerWorker(Thread):
                     break
         except KeyboardInterrupt:
             self.socket.close()
-            
+
+
+
     #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
     #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2
