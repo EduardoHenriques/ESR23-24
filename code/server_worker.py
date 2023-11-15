@@ -20,7 +20,7 @@ class ServerWorker(Thread):
     def __str__(self) -> str:
         return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
-    def send_media(self, socket, addr):
+    def send_media(self, socket, addr): 
         video = VideoStream(self.extra_info)
         while True:              
             # Stop sending if request is PAUSE or TEARDOWN
@@ -28,7 +28,8 @@ class ServerWorker(Thread):
             if data:
                 frameNumber = data.frameNnr()
                 try:
-                    CTT.send_msg_udp((frameNumber, data), socket, addr)
+                    print((frameNumber, data))
+                    CTT.send_msg_udp(Packet(PacketType.MEDIA_REQUEST, (frameNumber, data)), socket, addr)
                 except:
                     print("Connection Error")
                     print('-'*60)
@@ -50,17 +51,14 @@ class ServerWorker(Thread):
             if packet.type == PacketType.FLOOD_REQUEST:
                 print(f"flood request from {client_address} to {self.device_name}.")
                 data = packet.data
-                data[0] +=1 # jump nº increases
-                data[1].append(self.ip) # increase path
+                data[0].append(self.ip) # increase path
                 if self.RP:
-                    data[2] = True # has it reached a RP? 
+                    data[1] = True # has it reached a RP? 
                 else:
-                    new_packet = Packet(PacketType.FLOOD_REQUEST, data)
+                    new_request_packet = Packet(PacketType.FLOOD_REQUEST, data)
                     #TODO criar ligações com todos os vizinhos
                     for n in self.neighbours:
-                        print()
-                        #TODO enviar request para cada vizinho
-                        #CTT.send_msg(new_packet, # )
+                        CTT.send_msg(new_request_packet, )
                 packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                 #TODO enviar resposta para quem fez o pedido
             # RESP - FLOOD
@@ -75,6 +73,7 @@ class ServerWorker(Thread):
                 print(f"media request from {client_address}")
                 if "router" not in self.extra_info:
                     print("...")
+                self.send_media(client_socket, client_address)
             # RESP - MEDIA
             else:
                 print(f"media response from {client_address}")

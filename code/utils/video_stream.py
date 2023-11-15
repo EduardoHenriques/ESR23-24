@@ -1,9 +1,11 @@
-class VideoStream:
-	def __init__(self, filename):
-		self.filename = filename
+class VideoStream():
+	def __init__(self,filename):
+		#self.filename = "utils/movie.Mjpeg"
 		try:
-			self.file = open(filename, 'rb')
+			self.file = open("movie.Mjpeg", 'rb')
+			print("abriu o ficheiro")
 		except:
+			print("deu merda oh filho")
 			raise IOError
 		self.frameNum = 0
 		
