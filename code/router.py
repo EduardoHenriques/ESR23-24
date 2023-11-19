@@ -13,22 +13,23 @@ class Router():
     def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
         self.name = name 
         self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "router")
-
+        self.tcp_socket = None
+        self.udp_socket = None
     def __str__(self) -> str:
         return (f"ROUTER: {self.name}")
     
     def run(self):
         print("Start")
-        tcp_socket = TCPListen(self.SW)
-        udp_socket = UDPListen(self.SW)
+        self.tcp_socket = TCPListen(self.SW)
+        self.udp_socket = UDPListen(self.SW)
         #start threads for each protocol
-        tcp_socket.start()
-        udp_socket.start()
+        self.tcp_socket.start()
+        self.udp_socket.start()
         
 
         #join them (acho que n acontece)
-        udp_socket.join()
-        tcp_socket.join()
+        self.udp_socket.join()
+        self.tcp_socket.join()
 
 
 

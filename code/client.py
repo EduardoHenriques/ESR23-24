@@ -13,11 +13,14 @@ if __name__ == "__main__":
     data = json.load(file)
     client = data[client]
     my_ip, my_router = client["ip"], client["router"]
-    udp_p,tcp_p,rendezvous_points = data["port_UDP"], data["port_TCP"], data["target_RP"]
+    udp_p,tcp_p,rendezvous_points = client["port_UDP"], client["port_TCP"], data["target_RP"]
+    print(udp_p, tcp_p, rendezvous_points)
     file.close()
-    nc = Client(my_ip, "10.0.2.10", tcp_p, udp_p)
+    nc = Client(my_ip, "10.0.2.10", 4200, 6969)
     nc.send_Media_Req("asd","10.0.2.10")
     nc.recv_media()
+
+
     # connect to router
     # always perform a flooding request...
     #print('-'*25+"\nPERFORMING FLOOD REQUEST...\n"+'-'*25)

@@ -42,7 +42,7 @@ class CTT:
     def send_msg_udp(msg, sock, serverAddressPort):
         msg_bytes = CTT.serialize(msg)
         sock.sendto(msg_bytes, serverAddressPort)
-
+        # TODO method sendto expects bytes instead of tuple. When changed, gives an argument error(1 given, tuple required)
 
     @staticmethod
     def recv_msg(sock):
@@ -64,9 +64,15 @@ class CTT:
 
     @staticmethod
     def recv_msg_udp(sock):
-        bufferSize = 1024
-        msg_bytes, adress = sock.recvfrom(bufferSize)
-        msg = CTT.deserialize(msg_bytes)
+        try:
+            print(f"recebi um pacote no socket: {sock}")
+            bufferSize = 20480
+            msg_bytes, adress = sock.recvfrom(bufferSize)
+            msg = CTT.deserialize(msg_bytes)
+        except Exception as e :
+            print('-'*60)
+            print(f"Raised exception: {e}")
+            print('-'*60)
         return (msg, adress)
 
     @staticmethod

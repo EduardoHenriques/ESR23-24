@@ -2,6 +2,7 @@ import socket
 import time
 from threading import Thread
 import sys, json
+import traceback
 from  utils.packet import *
 from utils.video_stream import VideoStream
 CONFIG_PATH = "Configs/all_routers.json"
@@ -20,21 +21,34 @@ class ServerWorker(Thread):
     def __str__(self) -> str:
         return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
-    def send_media(self, socket, addr): 
+    def send_media(self, addr): 
+        UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
+        UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
         video = VideoStream(self.extra_info)
-        while True:              
+        print(f"adr_client: {addr}, port_udp:{self.port_UDP}")
+        ip_cliente, porta = addr
+        while True:  
+            time.sleep(0.05)            
             # Stop sending if request is PAUSE or TEARDOWN
             data = video.nextFrame()
             if data:
-                frameNumber = data.frameNnr()
+                frameNumber = video.frameNbr()
                 try:
-                    print((frameNumber, data))
-                    CTT.send_msg_udp(Packet(PacketType.MEDIA_REQUEST, (frameNumber, data)), socket, addr)
-                except:
-                    print("Connection Error")
+                    #print((frameNumber, data))
+                    print(f"FRAME N: {frameNumber} being sent...")
+                    packet = Packet(PacketType.MEDIA_RESPONSE, (frameNumber, data))
+                    addr_port = (ip_cliente, int(self.port_UDP))
+                    # packet = CTT.serialize(packet) # transform packet into bytes...
+                    #print(f"Type of Object: {type(packet)} -> {type(CTT.serialize(packet))}")
+                    CTT.send_msg_udp(packet, UDP_socket, addr_port)
+                except Exception as e:
+                    #print("Connection Error")
                     print('-'*60)
-                    #traceback.print_exc(file=sys.stdout)
+                    print(f"Raised exception: {e}")
+                    traceback.print_exc()
                     print('-'*60)
+                    break
+        UDP_socket.close()
         # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
     
     def process_UDP(self, packet, addr):
@@ -73,7 +87,8 @@ class ServerWorker(Thread):
                 print(f"media request from {client_address}")
                 if "router" not in self.extra_info:
                     print("...")
-                self.send_media(client_socket, client_address)
+                time.sleep(2)
+                self.send_media(client_address)
             # RESP - MEDIA
             else:
                 print(f"media response from {client_address}")
@@ -97,7 +112,8 @@ class ServerWorker(Thread):
         except KeyboardInterrupt:
             self.socket.close()
 
-
+    def end(self):
+        self.socket.close()
 
     #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
     #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2
