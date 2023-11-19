@@ -1,6 +1,7 @@
 import socket, json, time, sys
 from utils.packet import *
 from client_worker import Client
+from tkinter import Tk
 CONFIG_PATH = ("Configs/all_hosts.json")
 
 if __name__ == "__main__":
@@ -9,6 +10,7 @@ if __name__ == "__main__":
         exit()
     client = sys.argv[1]
     # obtain the client and general config info from the file
+    root = Tk()
     file = open(CONFIG_PATH,'r') 
     data = json.load(file)
     client = data[client]
@@ -16,9 +18,10 @@ if __name__ == "__main__":
     udp_p,tcp_p,rendezvous_points = client["port_UDP"], client["port_TCP"], data["target_RP"]
     print(udp_p, tcp_p, rendezvous_points)
     file.close()
-    nc = Client(my_ip, "10.0.2.10", 4200, 6969)
+    nc = Client(my_ip, "10.0.2.10", 4200, 6969, root)
     nc.send_Media_Req("asd","10.0.2.10")
-    nc.recv_media()
+    root.mainloop()
+    
 
 
     # connect to router

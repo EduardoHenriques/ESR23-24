@@ -3,9 +3,7 @@ import tkinter.messagebox
 from PIL import Image
 from PIL import ImageTk
 from utils.packet import *
-import time
-import socket
-import os
+import time, socket, os, threading
 
 if os.environ.get('DISPLAY','') == '':
     print('no display found. Using :0.0')
@@ -16,8 +14,9 @@ CACHE_FILE_EXT = ".jpg"
 
 class Client():
     # Client connects to router through TCP
-    def __init__(self, my_ip, a_router,tcp_p, udp_p):
+    def __init__(self, my_ip, a_router,tcp_p, udp_p, root):
         self.my_ip = my_ip
+        self.root = root
         self.createWidgets()
         self.client_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self.client_TCP.connect((a_router, int(tcp_p)))
@@ -54,8 +53,7 @@ class Client():
         #self.teardown.grid(row=1, column=3, padx=2, pady=2)
 
         # Create a label to display the movie
-        root = Tk()
-        self.label = Label(root, height=19)
+        self.label = Label(self.root, height=19)
         self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
 
     def send_Flood_Req(self):
@@ -92,7 +90,7 @@ class Client():
         path = ["10.0.2.10"]
         packet = Packet(PacketType.MEDIA_REQUEST, (video_name, path))
         CTT.send_msg(packet,self.client_TCP)
-
+        threading.Thread(target=self.recv_media).start()
         #try:
         #    curr_path = path.pop(0)
         #    data = (curr_path, video_name)
@@ -133,10 +131,11 @@ class Client():
 
     def writeFrame(self, data):
         """Write the received frame to a temp image file. Return the image file."""
-        cachename = CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT
+        cachename = CACHE_FILE_NAME + str(1) + CACHE_FILE_EXT
         file = open(cachename, "wb")
         file.write(data)
         file.close()
+        return cachename
 
     def recv_flood_response(self):
         packet = CTT.recv_msg(self.client_TCP)
