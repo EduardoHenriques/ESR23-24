@@ -16,6 +16,7 @@ class ServerWorker(Thread):
         self.RP = is_rendezvous
         self.neighbours = neighbours
         self.extra_info = extra_info
+        self.paths = []
     
 
     def __str__(self) -> str:
@@ -57,7 +58,17 @@ class ServerWorker(Thread):
     # Flooding -> Performs flooding on every router except the one that sent the packet
     # Media -> Redirects the media to the host that requested it or to the server
     
+    def recv_flood_response(socket, thread):
+        socket.listen(5)
+        client_socket, client_address = self.TCP_socket.accept()
+        packet = CTT.recv_msg(socket)
+        while packet != None:
+            if packet.type == PacketType.FLOOD_RESPONSE:
+                self.paths.append(packet.data[0])
+
+
     def process_TCP(self, client_socket,client_address):
+        threads = []
         packet = CTT.recv_msg(client_socket)
         while packet != None:
             print(packet)
@@ -66,14 +77,31 @@ class ServerWorker(Thread):
                 print(f"flood request from {client_address} to {self.device_name}.")
                 data = packet.data
                 data[0].append(self.ip) # increase path
-                if self.RP:
+                print(self.RP)
+                if self.RP == "True":
+                    print("pensa que é RP")
                     data[1] = True # has it reached a RP? 
+                    packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
+                    CTT.send_msg(packet_response, client_socket)
                 else:
                     new_request_packet = Packet(PacketType.FLOOD_REQUEST, data)
                     #TODO criar ligações com todos os vizinhos
+                    print("enviar request para os vizinhos")
+                    new_port = int(self.port_TCP) + 1
                     for n in self.neighbours:
-                        CTT.send_msg(new_request_packet, )
-                packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
+                        print(f"neighbours:{n}")
+                        adress_for_neighbours = (self.ip, new_port)
+                        # criar socket
+                        neighbours_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        neighbours_socket.bind(adress_for_neighbours)
+                        neighbours_socket.connect((n, int(self.port_TCP)))
+                        CTT.send_msg(new_request_packet, neighbours_socket)
+                        nt = threading.Thread(target=self.recv_flood_response(neighbours_socket, nt))
+                        nt.start()
+                        threads.append(nt)
+                        new_port +=1
+                    packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
+                    CTT.send_msg(packet_response, client_socket)
                 #TODO enviar resposta para quem fez o pedido
             # RESP - FLOOD
             elif packet.type == PacketType.FLOOD_RESPONSE:

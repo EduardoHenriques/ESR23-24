@@ -57,8 +57,10 @@ class Client():
         self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
 
     def send_Flood_Req(self):
-        packet = Packet(PacketType.FLOOD_REQUEST, [[self.my_ip], False]) # (#jumps, path)
-        self.client_TCP.send(packet.encode())
+        print("Estou a enviar um FLOOD REQUEST ao server...")
+        path = ["10.0.2.10"]
+        packet = Packet(PacketType.FLOOD_REQUEST, [path, False])
+        CTT.send_msg(packet,self.client_TCP)
     # N packets flood_response
     # sort p/ jumps
     # send_media_request
@@ -91,13 +93,7 @@ class Client():
         packet = Packet(PacketType.MEDIA_REQUEST, (video_name, path))
         CTT.send_msg(packet,self.client_TCP)
         threading.Thread(target=self.recv_media).start()
-        #try:
-        #    curr_path = path.pop(0)
-        #    data = (curr_path, video_name)
-        #    packet = Packet(PacketType.MEDIA_REQUEST, data)
-        #    CTT.send_msg(packet,self.client_TCP)
-        #except:
-        #    print("Error in current path! Trying a new one...")
+       
 
     def recv_media(self) :
         start_time = time.time()
@@ -138,9 +134,10 @@ class Client():
         return cachename
 
     def recv_flood_response(self):
-        packet = CTT.recv_msg(self.client_TCP)
-        if packet.type == PacketType.FLOOD_RESPONSE:
-            self.responses.append(packet)
+        while True:
+            packet = CTT.recv_msg(self.client_TCP)
+            if packet.type == PacketType.FLOOD_RESPONSE:
+                self.responses.append(packet)
     
 
     def send_Media_Shutdown(self, video_name, target_info):

@@ -12,6 +12,7 @@ class TCPListen(Thread):
         self.TCP_socket = None
         Thread.__init__(self)
 
+    
     def run(self):
         self.TCP_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # criar socket
         self.TCP_socket.bind((self.sw.ip, int(self.sw.port_TCP)))  # dar bind ao ip e porta ao servidor

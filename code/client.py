@@ -18,9 +18,9 @@ if __name__ == "__main__":
     udp_p,tcp_p,rendezvous_points = client["port_UDP"], client["port_TCP"], data["target_RP"]
     print(udp_p, tcp_p, rendezvous_points)
     file.close()
-    nc = Client(my_ip, "10.0.2.10", 4200, 6969, root)
-    nc.send_Media_Req("asd","10.0.2.10")
-    root.mainloop()
+    nc = Client(my_ip, my_router, 4200, 6969, root)
+    nc.send_Flood_Req()
+    nc.recv_flood_response()
     
 
 
