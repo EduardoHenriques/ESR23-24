@@ -71,7 +71,6 @@ class ServerWorker(Thread):
             if packet.type == PacketType.FLOOD_RESPONSE:
                 self.paths.append(packet.data[0])
 
-
     def process_TCP(self, client_socket,client_address):
         threads = []
         packet = CTT.recv_msg(client_socket)
@@ -93,17 +92,21 @@ class ServerWorker(Thread):
                     #TODO criar ligações com todos os vizinhos
                     print("enviar request para os vizinhos")
                     new_port = int(self.port_TCP) + 1
+                    print(f"Current path: {data[0]}")
+                    i = 1
                     for n in self.neighbours:
                         print(f"neighbours:{n}")
                         adress_for_neighbours = (self.ip, new_port)
                         # criar socket
                         neighbours_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         neighbours_socket.bind(adress_for_neighbours)
-                        print(f"Connection to{n}, in port {self.port_TCP} ")
+                        print(f"Connection to{n}, in port {self.port_TCP}")
                         neighbours_socket.connect((n, int(self.port_TCP)))
                         CTT.send_msg(new_request_packet, neighbours_socket)
-                        nt = threading.Thread(target=self.recv_flood_response(neighbours_socket))
+                        nt = threading.Thread(target=self.recv_flood_response, args=(neighbours_socket,))
                         nt.start()
+                        print(f"PACKET {i} SENT")
+                        i+=1
                         threads.append(nt)
                         new_port +=1
                     print("enviar resposta de volta")
