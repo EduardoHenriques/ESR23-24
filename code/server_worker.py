@@ -1,4 +1,5 @@
 import socket
+import threading
 import time
 from threading import Thread
 import sys, json
@@ -58,10 +59,14 @@ class ServerWorker(Thread):
     # Flooding -> Performs flooding on every router except the one that sent the packet
     # Media -> Redirects the media to the host that requested it or to the server
     
-    def recv_flood_response(socket, thread):
-        socket.listen(5)
-        client_socket, client_address = self.TCP_socket.accept()
-        packet = CTT.recv_msg(socket)
+    def recv_flood_response(self, n_socket):
+        #n_socket.listen()
+        print('-' * 10 + "I sleep" + '-' * 10)
+        # time.sleep(1)
+        #client_socket, client_address = n_socket.accept()
+        
+        packet = CTT.recv_msg(n_socket)
+        print(packet)
         while packet != None:
             if packet.type == PacketType.FLOOD_RESPONSE:
                 self.paths.append(packet.data[0])
@@ -94,12 +99,14 @@ class ServerWorker(Thread):
                         # criar socket
                         neighbours_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         neighbours_socket.bind(adress_for_neighbours)
+                        print(f"Connection to{n}, in port {self.port_TCP} ")
                         neighbours_socket.connect((n, int(self.port_TCP)))
                         CTT.send_msg(new_request_packet, neighbours_socket)
-                        nt = threading.Thread(target=self.recv_flood_response(neighbours_socket, nt))
+                        nt = threading.Thread(target=self.recv_flood_response(neighbours_socket))
                         nt.start()
                         threads.append(nt)
                         new_port +=1
+                    print("enviar resposta de volta")
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                     CTT.send_msg(packet_response, client_socket)
                 #TODO enviar resposta para quem fez o pedido

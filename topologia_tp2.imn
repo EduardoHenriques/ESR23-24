@@ -279,8 +279,8 @@ node n17 {
 	!
     }
     canvas c1
-    iconcoords {491.0 146.0}
-    labelcoords {491.0 178.0}
+    iconcoords {477.0 94.0}
+    labelcoords {477.0 126.0}
     interface-peer {eth0 n22}
     interface-peer {eth1 n23}
     interface-peer {eth2 n11}
@@ -305,8 +305,8 @@ node n18 {
 	!
     }
     canvas c1
-    iconcoords {763.0 163.0}
-    labelcoords {763.0 195.0}
+    iconcoords {666.0 195.0}
+    labelcoords {666.0 227.0}
     interface-peer {eth0 n24}
     interface-peer {eth1 n23}
     interface-peer {eth2 n17}
