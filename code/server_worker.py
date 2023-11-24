@@ -7,6 +7,7 @@ import traceback
 from  utils.packet import *
 from utils.video_stream import VideoStream
 CONFIG_PATH = "Configs/all_routers.json"
+import pprint
 
 class ServerWorker(Thread):
     def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, extra_info):
@@ -61,30 +62,14 @@ class ServerWorker(Thread):
     # Media -> Redirects the media to the host that requested it or to the server
     
     def recv_flood_response(self, response_socket, request_socket):
-        #n_socket.listen()
-        print('-' * 10 + "I sleep" + '-' * 10)
-        # time.sleep(1)
-        #client_socket, client_address = n_socket.accept()
         while True:
             try:
                 packet = CTT.recv_msg(response_socket)        
                 p_type, p_data = packet.type, packet.data
                 if packet.type == PacketType.FLOOD_RESPONSE:
                     #print(f" P_DATA: {type(p_data[0])} | {p_data[0]}")
-                    #print(response_socket)
-                    for key, value in p_data[0].items():
-                        for path in value:
-                            if key not in self.paths:
-                                self.paths[key] = value
-                            else:
-                                for path in value:
-                                    if path not in self.paths[key]:
-                                        #print(f"dicionario com a chave: {key} ->{self.paths[key]}")
-                                        #print("-"*20)
-                                        #print(f"valor a adicionar {value}")
-                                        self.paths[key].append(value)
-                                        #print("-"*20)
-                                        #print(f"dicionario dps da adição: {key} ->{self.paths[key]}")
+                    self.update_path(p_data[0])
+                    p_data[0] = self.paths
                     if p_data[1]:
                         print("#" *10 + "VIZINHO CHEGOU AO RP" + "#" *10)
                         CTT.send_msg(packet, request_socket)
@@ -102,31 +87,31 @@ class ServerWorker(Thread):
 
 
     def process_TCP(self, request_socket,request_address):
-        #threads = []
         packet = CTT.recv_msg(request_socket)
         while packet != None:
             #print(packet.type)
             # REQ - FLOOD
             if packet.type == PacketType.FLOOD_REQUEST:
-                print("entrou")
                 data = packet.data
-                #print(f"PROCESS_TCP: {data}")
+                print(f"data: {data[0]}")
                 print(f"paths: {self.paths}")
                 if self.paths:
-                    #print(f"entrou no if self.paths com o seguinte valor{self.paths}")
-                    for key, value in self.paths.items():
-                        value.append(data[0])
+                    self.update_path(data[0])
                 else:
                     self.paths = data[0]
                 #print(f"flood request from {request_address} to {self.device_name}.")
                 ip_of_request, _ = request_address
                 if ip_of_request not in self.paths:
-                    self.paths[ip_of_request] = [[self.ip ,ip_of_request]]
-                else:
-                    self.paths[ip_of_request].insert(0,self.ip)
-                    continue
+                    self.paths[ip_of_request] = [[ip_of_request]]
+                    print(f"dicionario criado no router -> {self.paths}")
+                print("############ BEFORE INSERT##################")
+                pp = pprint.PrettyPrinter(indent = 6)
+                pp.pprint(self.paths)
+                self.insert_ip(self.paths)
+                print("############ AFTER INSERT##################")
+                pp.pprint(self.paths)
                 data[0] = self.paths
-                print(f"type:{type(self.RP)} | value:{self.RP}")
+               
                 if self.RP == "True":
                     print("É RP")
                     data[1] = True # has it reached a RP? 
@@ -144,21 +129,21 @@ class ServerWorker(Thread):
                     for n in self.neighbours:
                         if n != ip_of_request:
                             time.sleep(0.5)
-                            print(f"neighbour:{n}")
+                            print(f"ligar ao vizinho:{n}")
                             adress_for_neighbours = (self.ip, new_port)
                             # criar socket
                             neighbours_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             neighbours_socket.bind(adress_for_neighbours)
-                            print(f"Connection to{n}, in port {self.port_TCP}")
+                            #print(f"Connection to{n}, in port {self.port_TCP}")
                             neighbours_socket.connect((n, int(self.port_TCP)))
                             CTT.send_msg(new_request_packet, neighbours_socket)
                             nt = threading.Thread(target=self.recv_flood_response, args=(neighbours_socket,request_socket))
                             nt.start()
-                            print(f"PACKET {i} SENT")
+                            #print(f"PACKET {i} SENT")
                             i+=1
                             self.threads.append(nt)
                             new_port +=1
-                    print("enviar resposta de volta")
+                    #print("enviar resposta de volta")
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                     CTT.send_msg(packet_response, request_socket)
                 #TODO enviar resposta para quem fez o pedido
@@ -202,6 +187,35 @@ class ServerWorker(Thread):
 
     def end(self):
         self.socket.close()
-
+    
+    # takes a dictionary {<IP> : [<PATH>]} from the flood request that the node received
+    # and updates its own dictionary with it.
+    # This must be done before sending its own dictionary to the other nodes.
+    def update_path(self, path_dict):
+        #print("############ BEFORE UPDATE##################")
+        #pp = pprint.PrettyPrinter(indent = 6)
+        #pp.pprint(self.paths)
+        #print(f"dicionario antes da adição: {self.paths}")
+        for key, value in path_dict.items():
+            if key != self.ip:
+                if key not in self.paths:
+                    self.paths[key] = value # add a new key,value pair if IP is unknown 
+                else:
+                    for path in value:
+                        if path not in self.paths[key]: # update its paths with the current node's IP if 1 or more paths were known previously
+                            print("-"*20)
+                            print(f"valor a adicionar {path}")
+                            self.paths[key].append(path)
+                            print("-"*20)
+        #print("############ AFTER UPDATE##################")
+        #pp.pprint(self.paths)
+        #print(f"dicionario dps da adição: {self.paths}")
+    
+    def insert_ip(self, p_dict):
+        for key, value in p_dict.items():
+            for path in value:
+                if self.ip not in path:
+                    path.insert(0,self.ip)
+        self.path = p_dict
     #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
     #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2
