@@ -58,8 +58,8 @@ class Client():
 
     def send_Flood_Req(self):
         print("Estou a enviar um FLOOD REQUEST ao server...")
-        path = ["10.0.2.10"]
-        packet = Packet(PacketType.FLOOD_REQUEST, [path, False])
+        path = []
+        packet = Packet(PacketType.FLOOD_REQUEST, [{}, False])
         CTT.send_msg(packet,self.client_TCP)
     # N packets flood_response
     # sort p/ jumps
@@ -137,7 +137,10 @@ class Client():
         while True:
             packet = CTT.recv_msg(self.client_TCP)
             if packet.type == PacketType.FLOOD_RESPONSE:
+                print(packet)
                 self.responses.append(packet)
+            #print("das")
+            #time.sleep(1)
     
 
     def send_Media_Shutdown(self, video_name, target_info):

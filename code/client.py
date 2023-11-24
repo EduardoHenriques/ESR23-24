@@ -21,6 +21,9 @@ if __name__ == "__main__":
     nc = Client(my_ip, my_router, 4200, 6969, root)
     nc.send_Flood_Req()
     nc.recv_flood_response()
+    #nc.send_Media_Req("teste", False)
+    #root.mainloop()
+    #
     
 
 

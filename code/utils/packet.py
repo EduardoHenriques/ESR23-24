@@ -34,9 +34,9 @@ class CTT:
         msg_len = len(msg_bytes)
         header = msg_len.to_bytes(CTT.HEADER_SIZE, 'big')
         
-        sock.sendall(header)
+        sock.send(header)
 
-        sock.sendall(msg_bytes)
+        sock.send(msg_bytes)
 
     @staticmethod
     def send_msg_udp(msg, sock, serverAddressPort):
@@ -65,9 +65,9 @@ class CTT:
     @staticmethod
     def recv_msg_udp(sock):
         try:
-            print(f"recebi um pacote no socket: {sock}")
             bufferSize = 20480
             msg_bytes, adress = sock.recvfrom(bufferSize)
+            print(f"recebi um pacote no socket: {sock}")
             msg = CTT.deserialize(msg_bytes)
         except Exception as e :
             print('-'*60)
@@ -87,6 +87,13 @@ class CTT:
             data = None  # or whatever you want
 
         return data
+
+class DEST:
+    def __init__(self, dest,nxt_router, jumps, film):
+        self.dest = dest
+        self. nxt_router = nxt_router
+        self.jumps = jumps
+        self.film = film
 
     
     
