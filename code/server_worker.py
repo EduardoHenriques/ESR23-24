@@ -19,13 +19,44 @@ class ServerWorker(Thread):
         self.neighbours = neighbours
         self.extra_info = extra_info
         self.paths = {}
-        self.threads = []
+        self.send_to = {} #might not be the real client we are sending to, it's just a way to keep the flux 
     
 
     def __str__(self) -> str:
         return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
-    def send_media(self, addr): 
+    def send_media_server(self, addr, info): 
+        client_ip, video_name = info
+        UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
+        UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
+        video = VideoStream(video_name)
+        print(f"adr_client: {addr}, port_udp:{self.port_UDP}")
+        ip_cliente, porta = addr
+        while True:  
+            time.sleep(0.05)            
+            # Stop sending if request is PAUSE or TEARDOWN
+            data = video.nextFrame()
+            if data:
+                frameNumber = video.frameNbr()
+                try:
+                    #print((frameNumber, data))
+                    print(f"FRAME N: {frameNumber} being sent...")
+                    packet = Packet(PacketType.MEDIA_RESPONSE, [(frameNumber, data), client_ip])
+                    addr_port = (ip_cliente, int(self.port_UDP))
+                    # packet = CTT.serialize(packet) # transform packet into bytes...
+                    #print(f"Type of Object: {type(packet)} -> {type(CTT.serialize(packet))}")
+                    CTT.send_msg_udp(packet, UDP_socket, addr_port)
+                except Exception as e:
+                    #print("Connection Error")
+                    print('-'*60)
+                    print(f"Raised exception: {e}")
+                    traceback.print_exc()
+                    print('-'*60)
+                    break
+        UDP_socket.close()
+        # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
+
+    def send_media_router(self, addr): 
         UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
         UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
         video = VideoStream(self.extra_info)
@@ -40,7 +71,7 @@ class ServerWorker(Thread):
                 try:
                     #print((frameNumber, data))
                     print(f"FRAME N: {frameNumber} being sent...")
-                    packet = Packet(PacketType.MEDIA_RESPONSE, (frameNumber, data))
+                    packet = Packet(PacketType.MEDIA_RESPONSE, [(frameNumber, data)])
                     addr_port = (ip_cliente, int(self.port_UDP))
                     # packet = CTT.serialize(packet) # transform packet into bytes...
                     #print(f"Type of Object: {type(packet)} -> {type(CTT.serialize(packet))}")
@@ -53,10 +84,18 @@ class ServerWorker(Thread):
                     print('-'*60)
                     break
         UDP_socket.close()
-        # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
+        # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")    
     
     def process_UDP(self, packet, addr):
         print("process")
+        if packet.type == PacketType.MEDIA_RESPONSE:
+            data = packet.data
+            frame, ip_cliente = data[0], data[1]
+            ip_router = self.best_router(self.paths[ip_cliente])
+            UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
+            UDP_socket.bind((self.ip, int(self.sw.port_UDP+1)))
+            CTT.send_msg_udp(packet, UDP_socket,(ip_router, self.port_UDP))
+            UDP_socket.close()
         #TODO receber media_responses e reencaminhar pacotes recebidos
     # Flooding -> Performs flooding on every router except the one that sent the packet
     # Media -> Redirects the media to the host that requested it or to the server
@@ -118,6 +157,8 @@ class ServerWorker(Thread):
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                     CTT.send_msg(packet_response, request_socket)
                     print("-"*20 +"\nRESPOSTA ENVIADA")
+                    request_packet = Packet(PacketType.MEDIA_REQUEST, data[3])
+                    self.send_media_req(request_packet)
                     break
                 else:
                     new_request_packet = Packet(PacketType.FLOOD_REQUEST, data)
@@ -141,11 +182,15 @@ class ServerWorker(Thread):
                             nt.start()
                             #print(f"PACKET {i} SENT")
                             i+=1
-                            self.threads.append(nt)
                             new_port +=1
                     #print("enviar resposta de volta")
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                     CTT.send_msg(packet_response, request_socket)
+                    if send_to:
+                        client_ip, video_name= data[3]
+                        for ip, streamed_video in send_to.items():
+                            if streamed_video == video_name:
+                                send_to[client_ip] = video_name
                 #TODO enviar resposta para quem fez o pedido
             # RESP - FLOOD
             elif packet.type == PacketType.FLOOD_RESPONSE:
@@ -157,10 +202,11 @@ class ServerWorker(Thread):
             # REQ - MEDIA   
             elif packet.type == PacketType.MEDIA_REQUEST:
                 print(f"media request from {request_address}")
-                if "router" not in self.extra_info:
-                    print("...")
-                time.sleep(2)
-                self.send_media(request_address)
+                if "server" in self.extra_info:
+                    time.sleep(2)
+                    self.send_media_server(request_address,packet.data[3])
+                else:
+                    print(..)
             # RESP - MEDIA
             else:
                 print(f"media response from {request_address}")
@@ -217,5 +263,17 @@ class ServerWorker(Thread):
                 if self.ip not in path:
                     path.insert(0,self.ip)
         self.path = p_dict
+    
+    def send_media_req(self, new_request_packet):
+        adress_for_server = (self.ip, self.port_TCP+1)
+        # criar socket
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind(adress_for_server)
+        #print(f"Connection to{n}, in port {self.port_TCP}")
+        server_socket.connect((self.ip_server, int(self.port_TCP)))
+        CTT.send_msg(new_request_packet, server_socket)
+    
+    def best_router(self, list_of_paths):
+        return list_of_paths[1]
     #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
     #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2

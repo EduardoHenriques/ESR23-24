@@ -56,10 +56,10 @@ class Client():
         self.label = Label(self.root, height=19)
         self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
 
-    def send_Flood_Req(self):
+    def send_Flood_Req(self, video_name):
         print("Estou a enviar um FLOOD REQUEST ao server...")
         path = []
-        packet = Packet(PacketType.FLOOD_REQUEST, [{}, False])
+        packet = Packet(PacketType.FLOOD_REQUEST, [{}, False,(self.my_ip,video_name)])
         CTT.send_msg(packet,self.client_TCP)
     # N packets flood_response
     # sort p/ jumps
