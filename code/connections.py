@@ -23,7 +23,6 @@ class TCPListen(Thread):
             print(f"Accepted connection from {client_address}")
             thread = threading.Thread(target=self.sw.process_TCP, args=(client_socket,client_address))
             thread.start()
-            thread.join()
 
     def close(self):
         # funcao para tratar de ligaçoes TCP

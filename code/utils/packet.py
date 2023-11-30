@@ -67,7 +67,7 @@ class CTT:
         try:
             bufferSize = 20480
             msg_bytes, adress = sock.recvfrom(bufferSize)
-            print(f"recebi um pacote no socket: {sock}")
+            #print(f"recebi um pacote no socket: {sock}")
             msg = CTT.deserialize(msg_bytes)
         except Exception as e :
             print('-'*60)

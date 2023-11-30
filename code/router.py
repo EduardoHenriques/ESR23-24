@@ -10,9 +10,9 @@ CONFIG_PATH = "Configs/all_routers.json"
 
 class Router():
     
-    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
+    def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, ip_servers):
         self.name = name 
-        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "router")
+        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "router", ip_servers)
         self.tcp_socket = None
         self.udp_socket = None
     def __str__(self) -> str:
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         with open(CONFIG_PATH,'r') as file:
             data = json.load(file)
             r_info = data[router_name]
-            r = Router(r_info["name"], r_info["RP"], r_info["ip"], r_info["port_UDP"], r_info["port_TCP"], r_info["neighbours"]) 
+            r = Router(r_info["name"], r_info["RP"], r_info["ip"], r_info["port_UDP"], r_info["port_TCP"], r_info["neighbours"], r_info["servers"]) 
             print(r.SW)
             r.run()
     

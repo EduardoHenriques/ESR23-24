@@ -10,7 +10,7 @@ class Server():
     
     def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours):
         self.name = name 
-        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "server")
+        self.SW = ServerWorker(name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, "server", "")
         self.tcp_socket = None
     def __str__(self) -> str:
         return (f"ROUTER: {self.name}")

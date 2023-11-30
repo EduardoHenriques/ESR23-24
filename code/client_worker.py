@@ -46,15 +46,20 @@ class Client():
         #self.pause["command"] = self.pauseMovie
         #self.pause.grid(row=1, column=2, padx=2, pady=2)
         #
-        ## Create Teardown button
-        #self.teardown = Button(self.master, width=20, padx=3, pady=3)
-        #self.teardown["text"] = "Teardown"
-        #self.teardown["command"] =  self.exitClient
-        #self.teardown.grid(row=1, column=3, padx=2, pady=2)
+        # Create Teardown button
+        self.teardown = Button(self.root, width=20, padx=3, pady=3)
+        self.teardown["text"] = "Teardown"
+        self.teardown["command"] =  self.exitClient
+        self.teardown.grid(row=1, column=3, padx=2, pady=2)
 
         # Create a label to display the movie
         self.label = Label(self.root, height=19)
         self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
+
+    def exitClient(self):
+	    """Teardown button handler."""
+	    self.root.destroy() # Close the gui window
+	    os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT) # Delete the cache image from video
 
     def send_Flood_Req(self, video_name):
         print("Estou a enviar um FLOOD REQUEST ao server...")
@@ -88,10 +93,10 @@ class Client():
         # to reach a rendezvous point
         
         # path = sort_paths(self.responses)[0] <- temporary comment
-        print("Estou a enviar um MEDIA REQUEST ao server...")
-        path = ["10.0.2.10"]
-        packet = Packet(PacketType.MEDIA_REQUEST, (video_name, path))
-        CTT.send_msg(packet,self.client_TCP)
+        #print("Estou a enviar um MEDIA REQUEST ao server...")
+        #path = ["10.0.2.10"]
+        #packet = Packet(PacketType.MEDIA_REQUEST, (video_name, path))
+        #CTT.send_msg(packet,self.client_TCP)
         threading.Thread(target=self.recv_media).start()
        
 
@@ -106,10 +111,11 @@ class Client():
             packet,addr = CTT.recv_msg_udp(self.client_UDP)
             #print(msg, addr)
             if packet and packet.type == PacketType.MEDIA_RESPONSE:
+                new_frame_number, frame = packet.data[0]
                 #print (packet.data[0], packet.data[1])
-                if packet.data[0]>frame_number:
-                    frame_number = packet.data[0]
-                    self.updateMovie(self.writeFrame(packet.data[1]))
+                if new_frame_number>frame_number:
+                    frame_number = new_frame_number
+                    self.updateMovie(self.writeFrame(frame))
                     print("NEW FRAME RECIEVED")
                     new_time = time.time()
             elapsed_time = new_time - start_time
