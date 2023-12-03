@@ -9,6 +9,7 @@ from utils.video_stream import VideoStream
 CONFIG_PATH = "Configs/all_routers.json"
 import pprint
 
+
 class ServerWorker(Thread):    
     def __init__(self, name, is_rendezvous, ip, port_UDP, port_TCP, neighbours, extra_info,servers_ip):
         self.port_UDP = port_UDP
@@ -21,69 +22,77 @@ class ServerWorker(Thread):
         self.paths = {}
         self.send_to = {} #might not be the real client we are sending to, it's just a way to keep the flux 
         self.servers_ip = servers_ip
+        self.threads = []
+        self.video_from = {}
+        self.start_stream = False
+        self.listen_udp = True
     
 
     def __str__(self) -> str:
         return (f"Server Worker of device {self.device_name}\nPorts(UDP | TCP): {self.port_UDP} | {self.port_TCP}\nRP: {self.RP}\nIPV4: {self.ip}\nNeighbours: {self.neighbours}")
 
-    def send_media_server(self, addr, info): 
+    def send_media_server(self, addr, info):
+        time.sleep(1) 
         client_ip, video_name = info
-        self.send_to[client_ip] = video_name
-        UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
-        UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
-        video = VideoStream(video_name)
-        #print(f"adr_client: {addr}, port_udp:{self.port_UDP}")
-        request_ip, porta = addr
-        while True:  
-            time.sleep(0.05)            
-            # Stop sending if request is PAUSE or TEARDOWN
-            data = video.nextFrame()
-            if data:
-                frameNumber = video.frameNbr()
-                try:
-                    #print((frameNumber, data))
-                    print(f"FRAME N: {frameNumber} being sent...")
-                    packet = Packet(PacketType.MEDIA_RESPONSE, [(frameNumber, data), (client_ip,video_name)])
-                    addr_port = (request_ip, int(self.port_UDP))
-                    # packet = CTT.serialize(packet) # transform packet into bytes...
-                    #print(f"Type of Object: {type(packet)} -> {type(CTT.serialize(packet))}")
-                    CTT.send_msg_udp(packet, UDP_socket, addr_port)
-                except Exception as e:
-                    #print("Connection Error")
-                    print('-'*60)
-                    print(f"Raised exception: {e}")
-                    traceback.print_exc()
-                    print('-'*60)
-                    break
-        UDP_socket.close()
-        # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
+        if video_name not in self.send_to.items():
+            try:
+                print("############# A COMEÇAR STREAM #########################")
+                self.send_to[client_ip] = video_name
+                UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
+                UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
+                UDP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                video = VideoStream(video_name)
+                #print(f"adr_client: {addr}, port_udp:{self.port_UDP}")
+                request_ip, porta = addr
+                while self.start_stream:    
+                    time.sleep(0.05)      
+                    # Stop sending if request is PAUSE or TEARDOWN
+                    data = video.nextFrame()
+                    if data:
+                        frameNumber = video.frameNbr()
+                        try:
+                            #print((frameNumber, data))
+                            print(f"FRAME N: {frameNumber} being sent...")
+                            packet = Packet(PacketType.MEDIA_RESPONSE, [(frameNumber, data), (client_ip,video_name)])
+                            addr_port = (request_ip, int(self.port_UDP))
+                            # packet = CTT.serialize(packet) # transform packet into bytes...
+                            #print(f"Type of Object: {type(packet)} -> {type(CTT.serialize(packet))}")
+                            CTT.send_msg_udp(packet, UDP_socket, addr_port)
+                        except Exception as e:
+                            #print("Connection Error")
+                            print('-'*60)
+                            print(f"Raised exception: {e}")
+                            traceback.print_exc()
+                            print('-'*60)
+                            break
+                    else:
+                        break
+                print("STOPING STREAM.....")
+                UDP_socket.close()
+                print("STREAM CLOSED")
+                # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
+            except Exception:
+                print("SERVER ALREADY STREAMING")
+        
     
     def process_UDP(self, packet, addr):
         if packet.type == PacketType.MEDIA_RESPONSE:
             ip_of_request, _ = addr
-            #print(f"############RECEBI UM PACOTE DE {ip_of_request}##################")
             data = packet.data
             frame = data[0]
             client_ip, video_name = data[1]
             if client_ip not in self.send_to.keys():
-                #print("############ BEFORE INSERT OF CLIENT##################")
-                #pp = pprint.PrettyPrinter(indent = 6)
-                #pp.pprint(self.send_to)
-                #print("############ AFTER INSERT OF CLIENT##################")
+                print(f"adicionou o valor again{client_ip}")
                 self.send_to[client_ip] = video_name
-                #pp = pprint.PrettyPrinter(indent = 6)
-                #pp.pprint(self.send_to)
+            if video_name not in self.video_from.keys():
+                self.video_from[video_name] = ip_of_request
             for client, video in self.send_to.items():
-                if video == video_name:
+                if video == video_name: 
                     ip_router = self.best_router(self.paths[client])
-                    #print(f"############ENVIAR UM PACOTE PARA {ip_router}##################")
                     UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
                     UDP_socket.bind((self.ip, int(self.port_UDP)+1))
                     CTT.send_msg_udp(packet, UDP_socket,(ip_router, int(self.port_UDP)))
                     UDP_socket.close()
-        #TODO receber media_responses e reencaminhar pacotes recebidos
-    # Flooding -> Performs flooding on every router except the one that sent the packet
-    # Media -> Redirects the media to the host that requested it or to the server
     
     def recv_flood_response(self, response_socket, request_socket):
         while True:
@@ -100,7 +109,6 @@ class ServerWorker(Thread):
                         break
                     CTT.send_msg(packet, request_socket)
             except Exception as e:
-                #print("Connection Error")
                 print('-'*60)
                 print(f"Raised exception: {e}")
                 traceback.print_exc()
@@ -113,31 +121,22 @@ class ServerWorker(Thread):
 
     def process_TCP(self, request_socket,request_address):
         packet = CTT.recv_msg(request_socket)
+        shutdown_ip = None
         while packet != None:
-            #print(packet.type)
-            # REQ - FLOOD
             if packet.type == PacketType.FLOOD_REQUEST:
                 data = packet.data
-                #print(f"data: {data[0]}")
-                #print(f"paths: {self.paths}")
                 if self.paths:
                     self.update_path(data[0])
                 else:
                     self.paths = data[0]
-                #print(f"flood request from {request_address} to {self.device_name}.")
                 ip_of_request, _ = request_address
                 if ip_of_request not in self.paths:
                     self.paths[ip_of_request] = [[ip_of_request]]
-                    #print(f"dicionario criado no router -> {self.paths}")
-                #print("############ BEFORE INSERT##################")
-                #pp = pprint.PrettyPrinter(indent = 6)
-                #pp.pprint(self.paths)
                 self.insert_ip(self.paths)
-                #print("############ AFTER INSERT##################")
-                #pp.pprint(self.paths)
                 data[0] = self.paths
                
                 if self.RP == "True":
+                    client_ip, video_name= data[2]
                     print("É RP")
                     data[1] = True # has it reached a RP? 
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
@@ -148,10 +147,8 @@ class ServerWorker(Thread):
                     break
                 else:
                     new_request_packet = Packet(PacketType.FLOOD_REQUEST, data)
-                    #TODO criar ligações com todos os vizinhos
                     print("enviar request para os vizinhos")
                     new_port = int(self.port_TCP) + 1
-                    #print(f"Current path: {data[0]}")
                     i = 1
                     for n in self.neighbours:
                         if n != ip_of_request:
@@ -159,23 +156,22 @@ class ServerWorker(Thread):
                             print(f"ligar ao vizinho:{n}")
                             # criar socket
                             neighbours_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            neighbours_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                             while True:
                                 try:
                                     adress_for_neighbours = (self.ip, new_port)
                                     neighbours_socket.bind(adress_for_neighbours)
-                                    #print(f"Connection to{n}, in port {self.port_TCP}")
                                     neighbours_socket.connect((n, int(self.port_TCP)))
                                     CTT.send_msg(new_request_packet, neighbours_socket)
                                     nt = threading.Thread(target=self.recv_flood_response, args=(neighbours_socket,request_socket))
+                                    self.threads.append(nt)
                                     nt.start()
-                                    #print(f"PACKET {i} SENT")
                                     i+=1
                                     new_port +=1
                                     break
                                 except Exception as e:
-                                    print(f"port {new_port} already in use, trying other...")
+                                    print(f"IN FLOOD_REQUEST: port {new_port} already in use, trying other...")
                                     new_port +=1
-                    #print("enviar resposta de volta")
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
                     CTT.send_msg(packet_response, request_socket)
                     if self.send_to:
@@ -192,30 +188,70 @@ class ServerWorker(Thread):
                                     pp = pprint.PrettyPrinter(indent = 6)
                                     pp.pprint(self.send_to)
                         except Exception as e:
-                            print("...")
-                #TODO enviar resposta para quem fez o pedido
-            # RESP - FLOOD
-            elif packet.type == PacketType.FLOOD_RESPONSE:
-                print(f"flood response from {request_address}")
-                data = packet.data
-                if data[2] == True:
-                    print("....") #TODO
-                    
+                            print("Failed attempt to piggy-back on existing connection")
             # REQ - MEDIA   
             elif packet.type == PacketType.MEDIA_REQUEST:
                 print(f"media request from {request_address}")
                 if "server" in self.extra_info:
-                    time.sleep(2)
+                    #time.sleep(0.5)
                     client_ip, video_name = packet.data
-                    if video_name not in self.send_to.values():  
-                        self.send_media_server(request_address,packet.data)
+                    self.start_stream = True 
+                    self.send_media_server(request_address,packet.data)
+                    break
                 else:
                     print("..")
-            # RESP - MEDIA
-            else:
-                print(f"media response from {request_address}")
-                # processar response
+                print("END SOCKET FOR MEDIA REQUEST")
+                break
+            elif packet.type == PacketType.SHUT_DOWN_REQUEST:
+                shutdown_ip, video_name = packet.data # shutdown packet data is the IP of the client and the name of the video that they want to shut down
+                ip_of_request, _ = request_address
+                print(f"RECIEVED A SHUTDOWN REQUEST FROM {ip_of_request}")
+                print(f"IP OF CLIENT:{shutdown_ip}\nLIST OF SEND_TO{self.send_to}")
+                if shutdown_ip in self.send_to.keys():
+                    self.send_to.pop(shutdown_ip)
+                    print(f"AFTER POP....\nIP OF CLIENT:{shutdown_ip}\nLIST OF SEND_TO{self.send_to}")
+                    if not self.send_to:
+                        print(f"if not self.send_to")
+                        if self.extra_info != "server": # if the dictionary is empty after removal send the shutdown signal to the server to stop streaming the video
+                            print("self.extra_info != server")
+                            ip_dest = self.video_from[video_name]
+                            shutdown_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            shutdown_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                            new_port = int(self.port_TCP) + 1
+                            attempts = 0
+                            while True:
+                                try:
+                                    print(f"FOWARDING SHUTDOWN REQUEST TO {ip_dest}")
+                                    print(self.send_to)
+                                    adress_for_shutdown = (self.ip, new_port)
+                                    shutdown_socket.bind(adress_for_shutdown)
+                                    shutdown_socket.connect((ip_dest, int(self.port_TCP)))
+                                    CTT.send_msg(packet, shutdown_socket)
+                                    print(f"Forwarding shutdown request... to {ip_dest}")
+                                    shutdown_socket.close()
+                                    break
+                                except Exception as e:
+                                    print(f"IN SHUTDOWN_REQUEST: port {new_port} already in use, trying other...")
+                                    new_port +=1
+                                    attempts +=1
+                                    if attempts >10:
+                                        break
+                            #shutdown_socket.close()
+                        else:
+                            self.start_stream = False
+                        break                
             packet = CTT.recv_msg(request_socket)
+        print(f"CLOSING SOCKET{request_socket}")    
+        request_socket.close()
+        print(f"HANDLING THREADS{self.threads}")
+        for t in self.threads:
+            print(f"REMOVING THREAD{t}")
+            t.join()
+        time.sleep(0.05)
+        if shutdown_ip in self.send_to.keys():
+            print(f"RESOLVING PROBLEMS..")
+            self.send_to.pop(shutdown_ip)
+        print(self.send_to)
     def run(self):
         if len(sys.argv) != 1:
             print("Erro - parametros invalidos")
@@ -225,14 +261,6 @@ class ServerWorker(Thread):
             router_name = args[0]
             with open(CONFIG_PATH,'r') as file:
                 data = json.load(file)
-        #try:
-        #    while True:
-        #        if(self.type == "TCP"): # TCP => FLOODING
-        #            break
-        #        if(self.type == "UDP"): # UDP => STREAMING
-        #            break
-        #except KeyboardInterrupt:
-        #    self.socket.close()
 
     def end(self):
         self.socket.close()
@@ -241,10 +269,6 @@ class ServerWorker(Thread):
     # and updates its own dictionary with it.
     # This must be done before sending its own dictionary to the other nodes.
     def update_path(self, path_dict):
-        #print("############ BEFORE UPDATE##################")
-        #pp = pprint.PrettyPrinter(indent = 6)
-        #pp.pprint(self.paths)
-        #print(f"dicionario antes da adição: {self.paths}")
         for key, value in path_dict.items():
             if key != self.ip:
                 if key not in self.paths:
@@ -252,13 +276,10 @@ class ServerWorker(Thread):
                 else:
                     for path in value:
                         if path not in self.paths[key] and path[0] in self.neighbours: # update its paths with the current node's IP if 1 or more paths were known previously
-                            print("-"*20)
-                            print(f"valor a adicionar {path}")
+                            #print("-"*20)
+                            #print(f"valor a adicionar {path}")
                             self.paths[key].append(path)
-                            print("-"*20)
-        #print("############ AFTER UPDATE##################")
-        #pp.pprint(self.paths)
-        #print(f"dicionario dps da adição: {self.paths}")
+                            #print("-"*20)
     
     def insert_ip(self, p_dict):
         for key, value in p_dict.items():
@@ -268,14 +289,30 @@ class ServerWorker(Thread):
         self.path = p_dict
     
     def send_media_req(self, new_request_packet):
-        #print("####################ENVIAR PEDIDO DE STREAM AO SERVER###############################")
-        adress_for_server = (self.ip, int(self.port_TCP)+1)
-        # criar socket
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(adress_for_server)
-        #print(f"Connection to{n}, in port {self.port_TCP}")
-        server_socket.connect((self.servers_ip, int(self.port_TCP)))
-        CTT.send_msg(new_request_packet, server_socket)
+        print("-"*20 +"\A ENVIAR MEDIA REQUEST....")
+        _, video_name= new_request_packet.data
+        new_port = int(self.port_TCP) + 1
+        while True:
+            try:
+                print(f"valores:{self.send_to}\nnome{video_name}")
+                if video_name not in self.send_to.values():
+                    print("-"*20 +"\ENTROU NO FOR")
+                    adress_for_server = (self.ip, new_port)
+                    #criar socket
+                    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    server_socket.bind(adress_for_server)
+                    server_socket.connect((self.servers_ip, int(self.port_TCP)))
+                    CTT.send_msg(new_request_packet, server_socket)
+                    print("-"*20 +"\MEDIA REQUEST ENVIADO")
+                    #else:
+                #    print("n entrou no if")
+                break
+            except Exception:
+                print("excessão")
+                #new_port += 1
+                time.sleep(1)
+
     
     def best_router(self, list_of_paths):
         #print(f"LISTA DE CAMINHOS A ESCOLHER: {list_of_paths}")
@@ -287,5 +324,3 @@ class ServerWorker(Thread):
                 smallest = len(path)
         next_router_index = final_path.index(self.ip) + 1
         return final_path[next_router_index]
-    #TODO Flood --> Smp q chega ao RP, response com flag de end of the line
-    #TODO Routers must know, who they send the Flood Req & When all of them answer(end) you answer(end) 2

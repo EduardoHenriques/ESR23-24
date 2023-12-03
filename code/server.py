@@ -24,7 +24,7 @@ class Server():
         #udp_socket.start()
         #join them (acho que n acontece)
         #udp_socket.join()
-        self.tcp_socket.join()
+        #self.tcp_socket.join()
 
 
 
@@ -43,4 +43,4 @@ if __name__ == "__main__":
                 print(r.SW)
                 r.run()
             except KeyboardInterrupt:
-                r.tcp_socket.close()
+                r.tcp_socket.join()

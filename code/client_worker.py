@@ -1,20 +1,22 @@
 from tkinter import *
 import tkinter.messagebox
-from PIL import Image
-from PIL import ImageTk
+from PIL import Image, ImageTk, ImageFile
 from utils.packet import *
 import time, socket, os, threading
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 if os.environ.get('DISPLAY','') == '':
     print('no display found. Using :0.0')
     os.environ.__setitem__('DISPLAY', ':0.0')
 
-CACHE_FILE_NAME = "cache-"
+#CACHE_FILE_NAME = f"/cache-"
 CACHE_FILE_EXT = ".jpg"
 
 class Client():
     # Client connects to router through TCP
-    def __init__(self, my_ip, a_router,tcp_p, udp_p, root):
+    def __init__(self, name, my_ip, a_router,tcp_p, udp_p, root):
+        self.name = name
         self.my_ip = my_ip
         self.root = root
         self.createWidgets()
@@ -25,7 +27,10 @@ class Client():
         self.TIMEOUT = 5 # seconds to terminate connection
         self.responses = [] # updated(appended) in receive_flood_response.
                             # Each path WILL reach a Rendezvous point. 
-
+        self.video_name = None
+        self.CACHE_FILE_NAME = f"{self.name}/cache-"
+        self.listen = True
+        self.threads = []
     def createWidgets(self):
         """Build GUI."""
         # Create Setup button
@@ -57,13 +62,22 @@ class Client():
         self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
 
     def exitClient(self):
-	    """Teardown button handler."""
-	    self.root.destroy() # Close the gui window
-	    os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT) # Delete the cache image from video
+        """Teardown button handler."""
+        packet = Packet(PacketType.SHUT_DOWN_REQUEST, (self.my_ip, self.video_name))
+        CTT.send_msg(packet,self.client_TCP)
+        print("A FECHAR....")
+        time.sleep(1)
+        #self.client_TCP.close()
+        self.root.destroy() # Close the gui window
+        os.remove(self.CACHE_FILE_NAME + str(self.name) + CACHE_FILE_EXT) # Delete the cache image from video
+        self.listen = False
+        for t in self.threads:
+            t.join
+        print("#"*10 +"END"+ "#"*10)
 
     def send_Flood_Req(self, video_name):
         print("Estou a enviar um FLOOD REQUEST ao server...")
-        path = []
+        self.video_name = video_name
         packet = Packet(PacketType.FLOOD_REQUEST, [{}, False,(self.my_ip,video_name)])
         CTT.send_msg(packet,self.client_TCP)
     # N packets flood_response
@@ -97,7 +111,10 @@ class Client():
         #path = ["10.0.2.10"]
         #packet = Packet(PacketType.MEDIA_REQUEST, (video_name, path))
         #CTT.send_msg(packet,self.client_TCP)
-        threading.Thread(target=self.recv_media).start()
+        nt = threading.Thread(target=self.recv_media)
+        self.threads.append(nt)
+        nt.start()
+        #threading.Thread(target=self.recv_media).join()
        
 
     def recv_media(self) :
@@ -106,7 +123,7 @@ class Client():
         print("estou á espera de receber uma stream...")
         i = 1
         new_time = 0
-        while True:
+        while self.listen:
             print(i)
             packet,addr = CTT.recv_msg_udp(self.client_UDP)
             #print(msg, addr)
@@ -133,7 +150,9 @@ class Client():
 
     def writeFrame(self, data):
         """Write the received frame to a temp image file. Return the image file."""
-        cachename = CACHE_FILE_NAME + str(1) + CACHE_FILE_EXT
+        cachename = self.CACHE_FILE_NAME + self.name + CACHE_FILE_EXT
+        #print(f"Frame length: {len(data)}")
+        os.makedirs(os.path.dirname(cachename), exist_ok=True)
         file = open(cachename, "wb")
         file.write(data)
         file.close()
