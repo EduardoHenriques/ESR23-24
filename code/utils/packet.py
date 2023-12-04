@@ -15,6 +15,9 @@ class PacketType(Enum):
 
     # Pacotes enviados para o servidor 
     SHUT_DOWN_REQUEST      = 30
+
+    # Pacotes enviados entre servidors e RPs
+    INFO_REQUEST           = 40
     
 class Packet:
     def __init__(self, type, data):

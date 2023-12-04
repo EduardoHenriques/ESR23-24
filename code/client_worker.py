@@ -124,7 +124,7 @@ class Client():
         i = 1
         new_time = 0
         while self.listen:
-            print(i)
+            #print(i)
             packet,addr = CTT.recv_msg_udp(self.client_UDP)
             #print(msg, addr)
             if packet and packet.type == PacketType.MEDIA_RESPONSE:

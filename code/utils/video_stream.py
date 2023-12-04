@@ -2,7 +2,7 @@ class VideoStream():
 	def __init__(self,filename):
 		#self.filename = "utils/movie.Mjpeg"
 		try:
-			self.file = open("movie.Mjpeg", 'rb')
+			self.file = open(filename, 'rb')
 			print("abriu o ficheiro")
 		except:
 			print("deu merda oh filho")

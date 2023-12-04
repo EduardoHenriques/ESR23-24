@@ -6,7 +6,7 @@
         "port_UDP": "6969",
         "port_TCP": "4200",
         "neighbours": ["10.0.11.2", "10.0.4.1", "10.0.3.1"],
-        "servers": ""
+        "servers": []
     },
     "R2": {
         "name": "n18_router",
@@ -15,7 +15,7 @@
         "port_UDP": "6969",
         "port_TCP": "4200",
         "neighbours": ["10.0.2.1", "10.0.0.1"],
-        "servers": ""
+        "servers": []
     },
     "R3": {
         "name": "n20_router",
@@ -24,7 +24,7 @@
         "port_UDP": "6969",
         "port_TCP": "4200",
         "neighbours": ["10.0.4.1", "10.0.2.1", "10.0.0.1"],
-        "servers": "10.0.2.10"
+        "servers": ["10.0.2.10"]
     },
     "R4": {
         "name": "n21_router",
@@ -33,7 +33,7 @@
         "port_UDP": "6969",
         "port_TCP": "4200",
         "neighbours": ["10.0.0.1", "10.0.3.1"],
-        "servers": ""
+        "servers": []
     },
     "R5": {
         "name": "n24_router",
@@ -42,6 +42,6 @@
         "port_UDP": "6969",
         "port_TCP": "4200",
         "neighbours": ["10.0.3.1", "10.0.11.2"],
-        "servers": ""
+        "servers": []
     }
 }
