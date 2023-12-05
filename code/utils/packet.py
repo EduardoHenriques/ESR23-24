@@ -7,7 +7,7 @@ class PacketType(Enum):
     FLOOD_REQUEST          = 10
     FLOOD_RESPONSE         = 11
     FLOOD_ERROR            = 12 
-
+    FLOOD_INFO             = 13
     # Pacotes enviados entre servidores/clientes 
     MEDIA_REQUEST          = 20
     MEDIA_RESPONSE         = 21

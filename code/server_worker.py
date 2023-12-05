@@ -36,7 +36,7 @@ class ServerWorker(Thread):
         client_ip, video_name = info
         if video_name not in self.send_to.items():
             try:
-                #print("############# A COMEÇAR STREAM #########################")
+                print("############# A COMEÇAR STREAM #########################")
                 self.send_to[client_ip] = video_name
                 UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # criar socket UDP
                 UDP_socket.bind((self.ip, int(self.port_UDP)))  # dar bind ao ao ip e porta ao servidor
@@ -52,7 +52,7 @@ class ServerWorker(Thread):
                         frameNumber = video.frameNbr()
                         try:
                             #print((frameNumber, data))
-                            #print(f"FRAME N: {frameNumber} being sent...")
+                            print(f"FRAME N: {frameNumber} being sent...")
                             packet = Packet(PacketType.MEDIA_RESPONSE, [(frameNumber, data), (client_ip,video_name)])
                             addr_port = (request_ip, int(self.port_UDP))
                             # packet = CTT.serialize(packet) # transform packet into bytes...
@@ -69,7 +69,7 @@ class ServerWorker(Thread):
                         break
                # print("STOPING STREAM.....")
                 UDP_socket.close()
-               # print("STREAM CLOSED")
+                print("STREAM CLOSED")
                 # Close the RTP socketself.clientInfo['rtpSocket'].close()print("All done!")
             except Exception:
                 print("SERVER ALREADY STREAMING")
@@ -84,6 +84,8 @@ class ServerWorker(Thread):
             if client_ip not in self.send_to.keys():
                 #print(f"adicionou o valor again{client_ip}")
                 self.send_to[client_ip] = video_name
+                pp = pprint.PrettyPrinter(indent = 6)
+                pp.pprint(self.send_to)
             if video_name not in self.video_from.keys():
                 self.video_from[video_name] = ip_of_request
             for client, video in self.send_to.items():
@@ -95,27 +97,42 @@ class ServerWorker(Thread):
                     UDP_socket.close()
     
     def recv_flood_response(self, response_socket, request_socket):
-        while True:
+        first = True
+        numb_of_neighbours = None
+        neighbours_response = 0
+        num_packet = Packet(PacketType.FLOOD_INFO, len(self.neighbours))
+        CTT.send_msg(num_packet, request_socket)
+        while True:  
             try:
                 packet = CTT.recv_msg(response_socket)        
                 p_type, p_data = packet.type, packet.data
-                if packet.type == PacketType.FLOOD_RESPONSE:
-                    print("RESPONSE")
+                if p_type == PacketType.FLOOD_INFO:
+                    print("number of neighbours response")
+                    numb_of_neighbours = p_data
+                    if numb_of_neighbours == 0:
+                        numb_of_neighbours +=1
+                if p_type == PacketType.FLOOD_RESPONSE:
+                    #print("RESPONSE")
                     #print(f" P_DATA: {type(p_data[0])} | {p_data[0]}")
-                    pp = pprint.PrettyPrinter(indent = 6)
-                    print("#############BEFORE UPDATE FUNC###############")
-                    pp.pprint(p_data[0])
+                    #pp = pprint.PrettyPrinter(indent = 6)
+                    #print("#############BEFORE UPDATE FUNC###############")
+                    #pp.pprint(p_data[0])
                     self.update_path(p_data[0])
-                    print("#############AFTER UPDATE FUNC###############")
+                    #print("#############AFTER UPDATE FUNC###############")
                     p_data[0] = self.paths
-                    print("CAMINHOS A SER ENVIADOS DE VOLTA")
-                    pp = pprint.PrettyPrinter(indent = 6)
-                    pp.pprint(self.paths)
+                    #print("CAMINHOS A SER ENVIADOS DE VOLTA")
+                    #pp = pprint.PrettyPrinter(indent = 6)
+                    #pp.pprint(self.paths)
+                    
                     print("-"*20)
                     if p_data[1]:
-                        #print("#" *10 + "VIZINHO CHEGOU AO RP" + "#" *10)
+                        neighbours_response +=1
+                        print(f"number of neighbours: {numb_of_neighbours} vs number of responses: {neighbours_response}")
+                        print(f"FROM{response_socket.getpeername()}\n TO {request_socket.getpeername()}")
+                        print("#" *10 + "VIZINHO CHEGOU AO RP" + "#" *10)
                         CTT.send_msg(packet, request_socket)
-                        break
+                        if numb_of_neighbours == neighbours_response:
+                            break
                     CTT.send_msg(packet, request_socket)
             except Exception as e:
                 #print('-'*60)
@@ -123,7 +140,7 @@ class ServerWorker(Thread):
                 traceback.print_exc()
                 #print('-'*60)
                 break
-        #print(f"########FECHAR SOCKET##########################")
+        print(f"########FECHAR SOCKET##########################")
         response_socket.close()
 
 
@@ -140,6 +157,8 @@ class ServerWorker(Thread):
                 else:
                     self.paths = data[0]
                 ip_of_request, _ = request_address
+                if self.ip not in self.paths:
+                    self.paths[self.ip] = [[self.ip]]
                 if ip_of_request not in self.paths:
                     self.paths[ip_of_request] = [[ip_of_request]]
                 self.insert_ip(self.paths)
@@ -151,9 +170,11 @@ class ServerWorker(Thread):
                     client_ip, video_name= data[2]
                     #print("É RP")
                     data[1] = True # has it reached a RP? 
+                    num_packet = Packet(PacketType.FLOOD_INFO, 1)
+                    CTT.send_msg(num_packet, request_socket)
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
-                    pp = pprint.PrettyPrinter(indent = 6)
-                    pp.pprint(self.paths)
+                    #pp = pprint.PrettyPrinter(indent = 6)
+                    #pp.pprint(self.paths)
                     CTT.send_msg(packet_response, request_socket)
                     server = self.best_server() 
                     #print("-"*20 +"\nRESPOSTA ENVIADA")
@@ -192,22 +213,23 @@ class ServerWorker(Thread):
                                     if attempts >10:
                                         break
                     packet_response = Packet(PacketType.FLOOD_RESPONSE, data)
+                    print(f"ENVIAR RESPSTA PARA: {request_socket}")
                     CTT.send_msg(packet_response, request_socket)
                     if self.send_to:
-                        #print("############ JA TEM STREAM ##################")
+                        print("############ JA TEM STREAM ##################")
                         client_ip, video_name= data[2]
-                        try:
-                            for ip, streamed_video in self.send_to.items():
-                                if streamed_video == video_name:
-                                    #print("############ BEFORE INSERT OF CLIENT##################")
-                                    #pp = pprint.PrettyPrinter(indent = 6)
-                                    #pp.pprint(self.send_to)
-                                    #print("############ AFTER INSERT OF CLIENT##################")
-                                    self.send_to[client_ip] = video_name
-                                    #pp = pprint.PrettyPrinter(indent = 6)
-                                    #pp.pprint(self.send_to)
-                        except Exception as e:
-                            print("Failed attempt to piggy-back on existing connection")
+                        #try:
+                        for ip, streamed_video in self.send_to.items():
+                            if streamed_video == video_name:
+                                print("############ BEFORE INSERT OF CLIENT##################")
+                                pp = pprint.PrettyPrinter(indent = 6)
+                                pp.pprint(self.send_to)
+                                print("############ AFTER INSERT OF CLIENT##################")
+                                self.send_to[client_ip] = video_name
+                                pp = pprint.PrettyPrinter(indent = 6)
+                                pp.pprint(self.send_to)
+                        #except Exception as e:
+                        #   print("Failed attempt to piggy-back on existing connection")
             # REQ - MEDIA   
             elif packet.type == PacketType.MEDIA_REQUEST:
                 #print(f"media request from {request_address}")
@@ -224,15 +246,19 @@ class ServerWorker(Thread):
             elif packet.type == PacketType.SHUT_DOWN_REQUEST:
                 shutdown_ip, video_name = packet.data # shutdown packet data is the IP of the client and the name of the video that they want to shut down
                 ip_of_request, _ = request_address
-                #print(f"RECIEVED A SHUTDOWN REQUEST FROM {ip_of_request}")
-                #print(f"IP OF CLIENT:{shutdown_ip}\nLIST OF SEND_TO{self.send_to}")
+                print(f"RECIEVED A SHUTDOWN REQUEST FROM {ip_of_request}")
+                print(f"IP OF CLIENT:{shutdown_ip}\nLIST OF SEND_TO{self.send_to}")
+                pp = pprint.PrettyPrinter(indent = 6)
+                pp.pprint(self.send_to)
                 if shutdown_ip in self.send_to.keys():
                     self.send_to.pop(shutdown_ip)
-                    #print(f"AFTER POP....\nIP OF CLIENT:{shutdown_ip}\nLIST OF SEND_TO{self.send_to}")
+                    print(f"AFTER POP....\nIP OF CLIENT:{shutdown_ip}")
+                    pp = pprint.PrettyPrinter(indent = 6)
+                    pp.pprint(self.send_to)
                     if not self.send_to:
-                        #print(f"if not self.send_to")
+                        print(f"if not self.send_to")
                         if self.extra_info != "server": # if the dictionary is empty after removal send the shutdown signal to the server to stop streaming the video
-                            #print("self.extra_info != server")
+                            print("self.extra_info != server")
                             ip_dest = self.video_from[video_name]
                             shutdown_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             shutdown_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -240,7 +266,7 @@ class ServerWorker(Thread):
                             attempts = 0
                             while True:
                                 try:
-                                    #print(f"FOWARDING SHUTDOWN REQUEST TO {ip_dest}")
+                                    print(f"FOWARDING SHUTDOWN REQUEST TO {ip_dest}")
                                     #print(self.send_to)
                                     adress_for_shutdown = (self.ip, new_port)
                                     shutdown_socket.bind(adress_for_shutdown)
@@ -267,9 +293,9 @@ class ServerWorker(Thread):
                 CTT.send_msg(packet,request_socket)
                 break                
             packet = CTT.recv_msg(request_socket)
-        #print(f"CLOSING SOCKET{request_socket}")    
+        print(f"CLOSING SOCKET{request_socket}")    
         request_socket.close()
-        #print(f"HANDLING THREADS{self.threads}")
+        print(f"HANDLING THREADS{self.threads}")
         for t in self.threads:
             #print(f"REMOVING THREAD{t}")
             t.join()
@@ -302,10 +328,10 @@ class ServerWorker(Thread):
                 else:
                     for path in value:
                         if path not in self.paths[key] and path[0] in self.neighbours: # update its paths with the current node's IP if 1 or more paths were known previously
-                            print("-"*20)
-                            print(f"valor a adicionar {path}")
+                            #print("-"*20)
+                            #print(f"valor a adicionar {path}")
                             self.paths[key].append(path)
-                            print("-"*20)
+                            #print("-"*20)
                     #pp = pprint.PrettyPrinter(indent = 6)
                     #pp.pprint(self.paths)
     def insert_ip(self, p_dict):
@@ -316,9 +342,10 @@ class ServerWorker(Thread):
         self.path = p_dict
     
     def send_media_req(self, server,new_request_packet):
-        #print("-"*20 +"\A ENVIAR MEDIA REQUEST....")
+        print("-"*20 +"\TENTAR ENVIAR MEDIA REQUEST....")
         _, video_name= new_request_packet.data
         new_port = int(self.port_TCP) + 1
+        attempts = 0
         while True:
             try:
                 #print(f"valores:{self.send_to}\nnome{video_name}")
@@ -331,13 +358,18 @@ class ServerWorker(Thread):
                     server_socket.bind(adress_for_server)
                     server_socket.connect((server, int(self.port_TCP)))
                     CTT.send_msg(new_request_packet, server_socket)
-                    #print("-"*20 +"\MEDIA REQUEST ENVIADO")
-                    #else:
-                #    print("n entrou no if")
+                    print("-"*20 +"\MEDIA REQUEST ENVIADO")
+                    server_socket.close()
+                else:
+                    print("n entrou no if")
                 break
             except Exception as e:
+                print(f"IN MEDIA_REQUEST: port {new_port} already in use, trying other...")
+                print(e)
                 new_port += 1
-                time.sleep(1)
+                attempts +=1
+                if attempts >10:
+                    break
 
 
     def best_server(self):
@@ -372,7 +404,7 @@ class ServerWorker(Thread):
                     break
                 except Exception as e:
                     #print(f"IN INFO_REQUEST: port {new_port} already in use, trying other...")
-                    time.sleep(2)
+                    #time.sleep(2)
                     #print(e)
                     #new_port +=1
                     attempts +=1
@@ -392,5 +424,5 @@ class ServerWorker(Thread):
                 final_path = path
                 smallest = len(path)
         next_router_index = final_path.index(self.ip) + 1
-        print(final_path)
+        print(f"CAMINHO ESCOLHIDO PARA ENVIAR VIDEO{final_path}")
         return final_path[next_router_index]
