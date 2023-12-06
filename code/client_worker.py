@@ -129,10 +129,13 @@ class Client():
             #print(msg, addr)
             if packet and packet.type == PacketType.MEDIA_RESPONSE:
                 new_frame_number, frame = packet.data[0]
+                print(f"tipo: {type(new_frame_number)}")
+                print(f"data: {new_frame_number}")
+                _,array = frame
                 #print (packet.data[0], packet.data[1])
                 if new_frame_number>frame_number:
                     frame_number = new_frame_number
-                    self.updateMovie(self.writeFrame(frame))
+                    self.updateMovie(self.writeFrame(array))
                     print("NEW FRAME RECIEVED")
                     new_time = time.time()
             elapsed_time = new_time - start_time
@@ -154,7 +157,7 @@ class Client():
         #print(f"Frame length: {len(data)}")
         os.makedirs(os.path.dirname(cachename), exist_ok=True)
         file = open(cachename, "wb")
-        file.write(data)
+        file.write(data.tobytes())
         file.close()
         return cachename
 

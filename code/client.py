@@ -19,7 +19,7 @@ if __name__ == "__main__":
     print(udp_p, tcp_p, rendezvous_points)
     file.close()
     nc = Client(my_name, my_ip, my_router, tcp_p, udp_p, root)
-    nc.send_Flood_Req("movie.Mjpeg")
+    nc.send_Flood_Req("movie3.mjpeg")
     #nc.recv_flood_response()
     nc.send_Media_Req("teste", False)
     root.mainloop()
